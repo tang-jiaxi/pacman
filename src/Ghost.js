@@ -200,6 +200,7 @@ Ghost.prototype.leaveHome = function() {
     if (map && map.ghostSpawns) {
         this.sigReverse = false;
         this.mode = GHOST_OUTSIDE;
+        this.scared = energizer.isActive();
     }
     else {
         this.sigLeaveHome = true;
@@ -232,6 +233,8 @@ Ghost.prototype.playSounds = function() {
 
 // function called when pacman eats an energizer
 Ghost.prototype.onEnergized = function() {
+    if (map && map.ghostSpawns && this.mode == GHOST_PACING_HOME)
+        return;
 
     this.reverse();
 

@@ -124,10 +124,10 @@ var mapPacman = new Map(28, 36, (
     "||||||.||||| || |||||.||||||" +
     "_____|.||||| || |||||.|_____" +
     "_____|.||          ||.|_____" +
-    "_____|.|| |||| ||| ||.|_____" +
-    "||||||.|| |||| ||| ||.||||||" +
-    "      .   |||| |||   .      " +
-    "||||||.|| ||||$||| ||.||||||" +
+    "_____|.|| |||__||| ||.|_____" +
+    "||||||.|| |______| ||.||||||" +
+    "      .   |______|   .      " +
+    "||||||.|| |______| ||.||||||" +
     "_____|.|| |||||||| ||.|_____" +
     "_____|.||          ||.|_____" +
     "_____|.|| |||||||| ||.|_____" +
@@ -146,12 +146,22 @@ var mapPacman = new Map(28, 36, (
     "____________________________" +
     "____________________________"));
 
+// Draw the original ghost house, but allow actors through its single doorway.
+var houseFloor = [
+    "_____|.|| |||  ||| ||.|_____",
+    "||||||.|| |      | ||.||||||",
+    "      .   |      |   .      ",
+    "||||||.|| |$    $| ||.||||||"
+].join("");
+mapPacman.tiles = mapPacman.tiles.slice(0,15*28) + houseFloor + mapPacman.tiles.slice(19*28);
+mapPacman.resetCurrent();
+
 // Blinky is active immediately; the releaser wakes the other three in order.
 mapPacman.ghostSpawns = [
-    {x:26, y:4, dir:DIR_LEFT},
-    {x:1, y:4, dir:DIR_RIGHT},
-    {x:26, y:32, dir:DIR_LEFT},
-    {x:1, y:32, dir:DIR_RIGHT}
+    {x:21, y:11, dir:DIR_RIGHT},
+    {x:6, y:11, dir:DIR_LEFT},
+    {x:21, y:23, dir:DIR_RIGHT},
+    {x:6, y:23, dir:DIR_LEFT}
 ];
 
 mapPacman.name = "Pac-Man";

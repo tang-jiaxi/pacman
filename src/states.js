@@ -1308,8 +1308,9 @@ var playState = {
         var i,g;
         for (i = 0; i<4; i++) {
             g = ghosts[i];
-            if (g.tile.x == pacman.tile.x && g.tile.y == pacman.tile.y && g.mode == GHOST_OUTSIDE) {
-                if (g.scared) { // eat ghost
+            var sleeping = map.ghostSpawns && g.mode == GHOST_PACING_HOME;
+            if (g.tile.x == pacman.tile.x && g.tile.y == pacman.tile.y && (g.mode == GHOST_OUTSIDE || sleeping)) {
+                if (g.scared && !sleeping) { // eat ghost
                     energizer.addPoints();
                     g.onEaten();
                 }

@@ -404,6 +404,14 @@ var initRenderer = function(){
             ctx.stroke();
         },
 
+        drawHouseFruit: function(x,y) {
+            bgCtx.save();
+            bgCtx.translate(x*tileSize+midTile.x,y*tileSize+midTile.y);
+            bgCtx.scale(0.5,0.5);
+            atlas.drawFruitSprite(bgCtx,0,0,"key");
+            bgCtx.restore();
+        },
+
         // erase pellet from background
         erasePellet: function(x,y) {
             bgCtx.translate(mapPad,mapPad);
@@ -538,8 +546,7 @@ var initRenderer = function(){
             else if (tile == '$') {
                 bgCtx.save();
                 if (!isTranslated) bgCtx.translate(mapPad,mapPad);
-                bgCtx.fillStyle = '#ffd54a';
-                this.drawCenterTileSq(bgCtx,x,y,5);
+                this.drawHouseFruit(x,y);
                 bgCtx.restore();
             }
         },
@@ -864,7 +871,7 @@ var initRenderer = function(){
             var i = map.posToIndex(x,y);
             var size = this.pelletSize;
             if (map.tiles[i] == 'o') size = this.energizerSize;
-            if (map.tiles[i] == '$') size = 5;
+            if (map.tiles[i] == '$') size = tileSize-2;
             this.drawCenterTileSq(bgCtx,x,y,size+2);
             if (!isTranslated) {
                 bgCtx.translate(-mapPad,-mapPad);
@@ -887,8 +894,7 @@ var initRenderer = function(){
                 bgCtx.translate(-0.5, -0.5);
             }
             else if (tile == '$') {
-                bgCtx.fillStyle = '#ffd54a';
-                this.drawCenterTileSq(bgCtx,x,y,5);
+                this.drawHouseFruit(x,y);
             }
             else if (tile == 'o') {
                 bgCtx.fillStyle = map.pelletColor;

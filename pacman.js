@@ -3460,6 +3460,14 @@ var initRenderer = function(){
             ctx.stroke();
         },
 
+        drawHouseFruit: function(x,y) {
+            bgCtx.save();
+            bgCtx.translate(x*tileSize+midTile.x,y*tileSize+midTile.y);
+            bgCtx.scale(0.5,0.5);
+            atlas.drawFruitSprite(bgCtx,0,0,"key");
+            bgCtx.restore();
+        },
+
         // erase pellet from background
         erasePellet: function(x,y) {
             bgCtx.translate(mapPad,mapPad);
@@ -3594,8 +3602,7 @@ var initRenderer = function(){
             else if (tile == '$') {
                 bgCtx.save();
                 if (!isTranslated) bgCtx.translate(mapPad,mapPad);
-                bgCtx.fillStyle = '#ffd54a';
-                this.drawCenterTileSq(bgCtx,x,y,5);
+                this.drawHouseFruit(x,y);
                 bgCtx.restore();
             }
         },
@@ -3920,7 +3927,7 @@ var initRenderer = function(){
             var i = map.posToIndex(x,y);
             var size = this.pelletSize;
             if (map.tiles[i] == 'o') size = this.energizerSize;
-            if (map.tiles[i] == '$') size = 5;
+            if (map.tiles[i] == '$') size = tileSize-2;
             this.drawCenterTileSq(bgCtx,x,y,size+2);
             if (!isTranslated) {
                 bgCtx.translate(-mapPad,-mapPad);
@@ -3943,8 +3950,7 @@ var initRenderer = function(){
                 bgCtx.translate(-0.5, -0.5);
             }
             else if (tile == '$') {
-                bgCtx.fillStyle = '#ffd54a';
-                this.drawCenterTileSq(bgCtx,x,y,5);
+                this.drawHouseFruit(x,y);
             }
             else if (tile == 'o') {
                 bgCtx.fillStyle = map.pelletColor;
@@ -7790,6 +7796,7 @@ Ghost.prototype.leaveHome = function() {
     if (map && map.ghostSpawns) {
         this.sigReverse = false;
         this.mode = GHOST_OUTSIDE;
+        this.scared = energizer.isActive();
     }
     else {
         this.sigLeaveHome = true;
@@ -7822,6 +7829,8 @@ Ghost.prototype.playSounds = function() {
 
 // function called when pacman eats an energizer
 Ghost.prototype.onEnergized = function() {
+    if (map && map.ghostSpawns && this.mode == GHOST_PACING_HOME)
+        return;
 
     this.reverse();
 
@@ -10854,8 +10863,9 @@ var playState = {
         var i,g;
         for (i = 0; i<4; i++) {
             g = ghosts[i];
-            if (g.tile.x == pacman.tile.x && g.tile.y == pacman.tile.y && g.mode == GHOST_OUTSIDE) {
-                if (g.scared) { // eat ghost
+            var sleeping = map.ghostSpawns && g.mode == GHOST_PACING_HOME;
+            if (g.tile.x == pacman.tile.x && g.tile.y == pacman.tile.y && (g.mode == GHOST_OUTSIDE || sleeping)) {
+                if (g.scared && !sleeping) { // eat ghost
                     energizer.addPoints();
                     g.onEaten();
                 }
@@ -12730,10 +12740,10 @@ var mapPacman = new Map(28, 36, (
     "||||||.||||| || |||||.||||||" +
     "_____|.||||| || |||||.|_____" +
     "_____|.||          ||.|_____" +
-    "_____|.|| |||| ||| ||.|_____" +
-    "||||||.|| |||| ||| ||.||||||" +
-    "      .   |||| |||   .      " +
-    "||||||.|| ||||$||| ||.||||||" +
+    "_____|.|| |||__||| ||.|_____" +
+    "||||||.|| |______| ||.||||||" +
+    "      .   |______|   .      " +
+    "||||||.|| |______| ||.||||||" +
     "_____|.|| |||||||| ||.|_____" +
     "_____|.||          ||.|_____" +
     "_____|.|| |||||||| ||.|_____" +
@@ -12752,12 +12762,22 @@ var mapPacman = new Map(28, 36, (
     "____________________________" +
     "____________________________"));
 
+// Draw the original ghost house, but allow actors through its single doorway.
+var houseFloor = [
+    "_____|.|| |||  ||| ||.|_____",
+    "||||||.|| |      | ||.||||||",
+    "      .   |      |   .      ",
+    "||||||.|| |$    $| ||.||||||"
+].join("");
+mapPacman.tiles = mapPacman.tiles.slice(0,15*28) + houseFloor + mapPacman.tiles.slice(19*28);
+mapPacman.resetCurrent();
+
 // Blinky is active immediately; the releaser wakes the other three in order.
 mapPacman.ghostSpawns = [
-    {x:26, y:4, dir:DIR_LEFT},
-    {x:1, y:4, dir:DIR_RIGHT},
-    {x:26, y:32, dir:DIR_LEFT},
-    {x:1, y:32, dir:DIR_RIGHT}
+    {x:21, y:11, dir:DIR_RIGHT},
+    {x:6, y:11, dir:DIR_LEFT},
+    {x:21, y:23, dir:DIR_RIGHT},
+    {x:6, y:23, dir:DIR_LEFT}
 ];
 
 mapPacman.name = "Pac-Man";
