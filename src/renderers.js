@@ -518,12 +518,14 @@ var initRenderer = function(){
                 tile = map.currentTiles[i++];
                 if (tile == '.')
                     this.drawNoGroutTile(bgCtx,x,y,tileSize);
+                else if (tile == '$')
+                    this.refreshPellet(x,y,true);
             }
 
             endMapFrame();
         },
 
-        refreshPellet: function(x,y) {
+        refreshPellet: function(x,y,isTranslated) {
             var i = map.posToIndex(x,y);
             var tile = map.currentTiles[i];
             if (tile == ' ') {
@@ -532,6 +534,13 @@ var initRenderer = function(){
             else if (tile == '.') {
                 bgCtx.fillStyle = this.pelletColor;
                 this.drawNoGroutTile(bgCtx,x,y,tileSize);
+            }
+            else if (tile == '$') {
+                bgCtx.save();
+                if (!isTranslated) bgCtx.translate(mapPad,mapPad);
+                bgCtx.fillStyle = '#ffd54a';
+                this.drawCenterTileSq(bgCtx,x,y,5);
+                bgCtx.restore();
             }
         },
 
@@ -853,7 +862,9 @@ var initRenderer = function(){
             }
             bgCtx.fillStyle = "#000";
             var i = map.posToIndex(x,y);
-            var size = map.tiles[i] == 'o' ? this.energizerSize : this.pelletSize;
+            var size = this.pelletSize;
+            if (map.tiles[i] == 'o') size = this.energizerSize;
+            if (map.tiles[i] == '$') size = 5;
             this.drawCenterTileSq(bgCtx,x,y,size+2);
             if (!isTranslated) {
                 bgCtx.translate(-mapPad,-mapPad);
@@ -874,6 +885,10 @@ var initRenderer = function(){
                 bgCtx.translate(0.5, 0.5);
                 this.drawCenterTileSq(bgCtx,x,y,this.pelletSize);
                 bgCtx.translate(-0.5, -0.5);
+            }
+            else if (tile == '$') {
+                bgCtx.fillStyle = '#ffd54a';
+                this.drawCenterTileSq(bgCtx,x,y,5);
             }
             else if (tile == 'o') {
                 bgCtx.fillStyle = map.pelletColor;

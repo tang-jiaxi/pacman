@@ -222,6 +222,10 @@ Player.prototype.update = function(j) {
             if (t=='o')
                 energizer.activate();
         }
+        if (t == '$') {
+            map.collectTile(this.tile.x, this.tile.y);
+            addScore(500);
+        }
         if (t == ' ' && ! (this.lastMeal.x == this.tile.x && this.lastMeal.y == this.tile.y)) {
             audio.eating.stopLoop(true);
         }

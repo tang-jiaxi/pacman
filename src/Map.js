@@ -63,17 +63,17 @@ Map.prototype.load = function(t,abs_t) {
     var i;
     for (i=0; i<this.numTiles; i++) {
         firstTile = this.startTiles[i];
-        if (firstTile == '.' || firstTile == 'o') {
+        if (firstTile == '.' || firstTile == 'o' || firstTile == '$') {
             if (abs_t <= this.timeEaten[i]) { // dot should be present
                 if (this.currentTiles[i] != firstTile) {
-                    this.dotsEaten--;
+                    if (firstTile != '$') this.dotsEaten--;
                     this.currentTiles[i] = firstTile;
                     refresh.call(this,i);
                 }
             }
             else if (abs_t > this.timeEaten[i]) { // dot should be missing
                 if (this.currentTiles[i] != ' ') {
-                    this.dotsEaten++;
+                    if (firstTile != '$') this.dotsEaten++;
                     this.currentTiles[i] = ' ';
                     refresh.call(this,i);
                 }
@@ -366,7 +366,7 @@ Map.prototype.getTile = function(x,y) {
 
 // determines if the given character is a walkable floor tile
 Map.prototype.isFloorTileChar = function(tile) {
-    return tile==' ' || tile=='.' || tile=='o';
+    return tile==' ' || tile=='.' || tile=='o' || tile=='$';
 };
 
 // determines if the given tile coordinate has a walkable floor tile
@@ -377,6 +377,10 @@ Map.prototype.isFloorTile = function(x,y) {
 // mark the dot at the given coordinate eaten
 Map.prototype.onDotEat = function(x,y) {
     this.dotsEaten++;
+    this.collectTile(x,y);
+};
+
+Map.prototype.collectTile = function(x,y) {
     var i = this.posToIndex(x,y);
     this.currentTiles[i] = ' ';
     this.timeEaten[i] = vcr.getTime();

@@ -98,11 +98,23 @@ Ghost.prototype.reset = function() {
 
     // call Actor's reset function to reset position and direction
     Actor.prototype.reset.apply(this);
+    if (map && map.ghostSpawns) {
+        this.moveToCorner();
+    }
 
     // faceDirEnum  = direction the ghost is facing
     // dirEnum      = direction the ghost is moving
     // (faceDirEnum represents what dirEnum will be once the ghost reaches the middle of the tile)
     this.faceDirEnum = this.dirEnum;
+};
+
+Ghost.prototype.moveToCorner = function() {
+    var spawn = map.ghostSpawns[ghosts.indexOf(this)];
+    this.setDir(spawn.dir);
+    this.faceDirEnum = spawn.dir;
+    this.setPos(spawn.x*tileSize+midTile.x, spawn.y*tileSize+midTile.y);
+    this.sigReverse = false;
+    this.targetting = false;
 };
 
 Ghost.prototype.save = function(t) {
@@ -140,6 +152,9 @@ Ghost.prototype.isSlowInTunnel = function() {
 
 // gets the number of steps to move in this frame
 Ghost.prototype.getNumSteps = function() {
+
+    if (map && map.ghostSpawns && this.mode == GHOST_PACING_HOME)
+        return 0;
 
     var pattern = STEP_GHOST;
 
@@ -182,7 +197,13 @@ Ghost.prototype.goHome = function() {
 // (not sure if this is correct yet)
 Ghost.prototype.leaveHome = function() {
     this.playSounds();
-    this.sigLeaveHome = true;
+    if (map && map.ghostSpawns) {
+        this.sigReverse = false;
+        this.mode = GHOST_OUTSIDE;
+    }
+    else {
+        this.sigLeaveHome = true;
+    }
 };
 
 Ghost.prototype.playSounds = function() {

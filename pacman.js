@@ -606,17 +606,17 @@ Map.prototype.load = function(t,abs_t) {
     var i;
     for (i=0; i<this.numTiles; i++) {
         firstTile = this.startTiles[i];
-        if (firstTile == '.' || firstTile == 'o') {
+        if (firstTile == '.' || firstTile == 'o' || firstTile == '$') {
             if (abs_t <= this.timeEaten[i]) { // dot should be present
                 if (this.currentTiles[i] != firstTile) {
-                    this.dotsEaten--;
+                    if (firstTile != '$') this.dotsEaten--;
                     this.currentTiles[i] = firstTile;
                     refresh.call(this,i);
                 }
             }
             else if (abs_t > this.timeEaten[i]) { // dot should be missing
                 if (this.currentTiles[i] != ' ') {
-                    this.dotsEaten++;
+                    if (firstTile != '$') this.dotsEaten++;
                     this.currentTiles[i] = ' ';
                     refresh.call(this,i);
                 }
@@ -909,7 +909,7 @@ Map.prototype.getTile = function(x,y) {
 
 // determines if the given character is a walkable floor tile
 Map.prototype.isFloorTileChar = function(tile) {
-    return tile==' ' || tile=='.' || tile=='o';
+    return tile==' ' || tile=='.' || tile=='o' || tile=='$';
 };
 
 // determines if the given tile coordinate has a walkable floor tile
@@ -920,6 +920,10 @@ Map.prototype.isFloorTile = function(x,y) {
 // mark the dot at the given coordinate eaten
 Map.prototype.onDotEat = function(x,y) {
     this.dotsEaten++;
+    this.collectTile(x,y);
+};
+
+Map.prototype.collectTile = function(x,y) {
     var i = this.posToIndex(x,y);
     this.currentTiles[i] = ' ';
     this.timeEaten[i] = vcr.getTime();
@@ -3570,12 +3574,14 @@ var initRenderer = function(){
                 tile = map.currentTiles[i++];
                 if (tile == '.')
                     this.drawNoGroutTile(bgCtx,x,y,tileSize);
+                else if (tile == '$')
+                    this.refreshPellet(x,y,true);
             }
 
             endMapFrame();
         },
 
-        refreshPellet: function(x,y) {
+        refreshPellet: function(x,y,isTranslated) {
             var i = map.posToIndex(x,y);
             var tile = map.currentTiles[i];
             if (tile == ' ') {
@@ -3584,6 +3590,13 @@ var initRenderer = function(){
             else if (tile == '.') {
                 bgCtx.fillStyle = this.pelletColor;
                 this.drawNoGroutTile(bgCtx,x,y,tileSize);
+            }
+            else if (tile == '$') {
+                bgCtx.save();
+                if (!isTranslated) bgCtx.translate(mapPad,mapPad);
+                bgCtx.fillStyle = '#ffd54a';
+                this.drawCenterTileSq(bgCtx,x,y,5);
+                bgCtx.restore();
             }
         },
 
@@ -3905,7 +3918,9 @@ var initRenderer = function(){
             }
             bgCtx.fillStyle = "#000";
             var i = map.posToIndex(x,y);
-            var size = map.tiles[i] == 'o' ? this.energizerSize : this.pelletSize;
+            var size = this.pelletSize;
+            if (map.tiles[i] == 'o') size = this.energizerSize;
+            if (map.tiles[i] == '$') size = 5;
             this.drawCenterTileSq(bgCtx,x,y,size+2);
             if (!isTranslated) {
                 bgCtx.translate(-mapPad,-mapPad);
@@ -3926,6 +3941,10 @@ var initRenderer = function(){
                 bgCtx.translate(0.5, 0.5);
                 this.drawCenterTileSq(bgCtx,x,y,this.pelletSize);
                 bgCtx.translate(-0.5, -0.5);
+            }
+            else if (tile == '$') {
+                bgCtx.fillStyle = '#ffd54a';
+                this.drawCenterTileSq(bgCtx,x,y,5);
             }
             else if (tile == 'o') {
                 bgCtx.fillStyle = map.pelletColor;
@@ -7669,11 +7688,23 @@ Ghost.prototype.reset = function() {
 
     // call Actor's reset function to reset position and direction
     Actor.prototype.reset.apply(this);
+    if (map && map.ghostSpawns) {
+        this.moveToCorner();
+    }
 
     // faceDirEnum  = direction the ghost is facing
     // dirEnum      = direction the ghost is moving
     // (faceDirEnum represents what dirEnum will be once the ghost reaches the middle of the tile)
     this.faceDirEnum = this.dirEnum;
+};
+
+Ghost.prototype.moveToCorner = function() {
+    var spawn = map.ghostSpawns[ghosts.indexOf(this)];
+    this.setDir(spawn.dir);
+    this.faceDirEnum = spawn.dir;
+    this.setPos(spawn.x*tileSize+midTile.x, spawn.y*tileSize+midTile.y);
+    this.sigReverse = false;
+    this.targetting = false;
 };
 
 Ghost.prototype.save = function(t) {
@@ -7711,6 +7742,9 @@ Ghost.prototype.isSlowInTunnel = function() {
 
 // gets the number of steps to move in this frame
 Ghost.prototype.getNumSteps = function() {
+
+    if (map && map.ghostSpawns && this.mode == GHOST_PACING_HOME)
+        return 0;
 
     var pattern = STEP_GHOST;
 
@@ -7753,7 +7787,13 @@ Ghost.prototype.goHome = function() {
 // (not sure if this is correct yet)
 Ghost.prototype.leaveHome = function() {
     this.playSounds();
-    this.sigLeaveHome = true;
+    if (map && map.ghostSpawns) {
+        this.sigReverse = false;
+        this.mode = GHOST_OUTSIDE;
+    }
+    else {
+        this.sigLeaveHome = true;
+    }
 };
 
 Ghost.prototype.playSounds = function() {
@@ -8264,6 +8304,10 @@ Player.prototype.update = function(j) {
 
             if (t=='o')
                 energizer.activate();
+        }
+        if (t == '$') {
+            map.collectTile(this.tile.x, this.tile.y);
+            addScore(500);
         }
         if (t == ' ' && ! (this.lastMeal.x == this.tile.x && this.lastMeal.y == this.tile.y)) {
             audio.eating.stopLoop(true);
@@ -10852,8 +10896,14 @@ var playState = {
             else { // make ghosts go home immediately after points disappear
                 for (i=0; i<4; i++)
                     if (ghosts[i].mode == GHOST_EATEN) {
-                        ghosts[i].mode = GHOST_GOING_HOME;
-                        ghosts[i].targetting = 'door';
+                        if (map.ghostSpawns) {
+                            ghosts[i].moveToCorner();
+                            ghosts[i].mode = GHOST_OUTSIDE;
+                        }
+                        else {
+                            ghosts[i].mode = GHOST_GOING_HOME;
+                            ghosts[i].targetting = 'door';
+                        }
                     }
                     ghosts[0].playSounds();
             }
@@ -12680,10 +12730,10 @@ var mapPacman = new Map(28, 36, (
     "||||||.||||| || |||||.||||||" +
     "_____|.||||| || |||||.|_____" +
     "_____|.||          ||.|_____" +
-    "_____|.|| |||--||| ||.|_____" +
-    "||||||.|| |______| ||.||||||" +
-    "      .   |______|   .      " +
-    "||||||.|| |______| ||.||||||" +
+    "_____|.|| |||| ||| ||.|_____" +
+    "||||||.|| |||| ||| ||.||||||" +
+    "      .   |||| |||   .      " +
+    "||||||.|| ||||$||| ||.||||||" +
     "_____|.|| |||||||| ||.|_____" +
     "_____|.||          ||.|_____" +
     "_____|.|| |||||||| ||.|_____" +
@@ -12701,6 +12751,14 @@ var mapPacman = new Map(28, 36, (
     "||||||||||||||||||||||||||||" +
     "____________________________" +
     "____________________________"));
+
+// Blinky is active immediately; the releaser wakes the other three in order.
+mapPacman.ghostSpawns = [
+    {x:26, y:4, dir:DIR_LEFT},
+    {x:1, y:4, dir:DIR_RIGHT},
+    {x:26, y:32, dir:DIR_LEFT},
+    {x:1, y:32, dir:DIR_RIGHT}
+];
 
 mapPacman.name = "Pac-Man";
 //mapPacman.wallStrokeColor = "#47b897"; // from Pac-Man Plus
