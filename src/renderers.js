@@ -406,10 +406,31 @@ var initRenderer = function(){
 
         drawHouseFruit: function(x,y) {
             bgCtx.save();
-            bgCtx.translate(x*tileSize+midTile.x,y*tileSize+midTile.y);
+            bgCtx.translate(x*tileSize+midTile.x+0.5,y*tileSize+midTile.y+0.5);
             bgCtx.scale(0.5,0.5);
             atlas.drawFruitSprite(bgCtx,0,0,"key");
             bgCtx.restore();
+        },
+
+        drawHouseFruitProgress: function() {
+            if (!pacman.houseFruitFrames) return;
+
+            var x = pacman.tile.x*tileSize+midTile.x+0.5;
+            var y = pacman.tile.y*tileSize+midTile.y+0.5;
+            var start = -Math.PI/2;
+            var progress = (pacman.houseFruitFrames-1)/HOUSE_FRUIT_EAT_FRAMES;
+
+            ctx.save();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#555';
+            ctx.beginPath();
+            ctx.arc(x,y,8,0,Math.PI*2);
+            ctx.stroke();
+            ctx.strokeStyle = '#ffd54a';
+            ctx.beginPath();
+            ctx.arc(x,y,8,start,start+Math.PI*2*progress);
+            ctx.stroke();
+            ctx.restore();
         },
 
         // erase pellet from background

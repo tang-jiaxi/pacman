@@ -2,6 +2,8 @@
 // Player is the controllable character (Pac-Man)
 
 // Player constructor
+var HOUSE_FRUIT_EAT_FRAMES = 150;
+
 var Player = function() {
 
     // inherit data from Actor
@@ -19,6 +21,7 @@ var Player = function() {
 
     this.savedNextDirEnum = {};
     this.savedStopped = {};
+    this.savedHouseFruitFrames = {};
     this.savedEatPauseFramesLeft = {};
 };
 
@@ -29,6 +32,7 @@ Player.prototype.save = function(t) {
     this.savedEatPauseFramesLeft[t] = this.eatPauseFramesLeft;
     this.savedNextDirEnum[t] = this.nextDirEnum;
     this.savedStopped[t] = this.stopped;
+    this.savedHouseFruitFrames[t] = this.houseFruitFrames;
 
     Actor.prototype.save.call(this,t);
 };
@@ -37,6 +41,7 @@ Player.prototype.load = function(t) {
     this.eatPauseFramesLeft = this.savedEatPauseFramesLeft[t];
     this.setNextDir(this.savedNextDirEnum[t]);
     this.stopped = this.savedStopped[t];
+    this.houseFruitFrames = this.savedHouseFruitFrames[t];
 
     Actor.prototype.load.call(this,t);
 };
@@ -47,6 +52,7 @@ Player.prototype.reset = function() {
     this.setNextDir(this.startDirEnum);
     this.stopped = false;
     this.inputDirEnum = undefined;
+    this.houseFruitFrames = 0;
 
     this.eatPauseFramesLeft = 0;   // current # of frames left to pause after eating
 
@@ -94,6 +100,12 @@ Player.prototype.getAnimFrame = function(frame) {
 };
 
 Player.prototype.setInputDir = function(dirEnum) {
+    if (this.houseFruitFrames) {
+        if (!getOpenTiles(this.tile)[dirEnum]) return;
+        this.houseFruitFrames = 0;
+        this.stopped = false;
+        this.setDir(dirEnum);
+    }
     this.inputDirEnum = dirEnum;
 };
 
@@ -186,8 +198,19 @@ Player.prototype.steer = function() {
 };
 
 
+// Advance once per gameplay frame, after checking for ghost collisions.
+Player.prototype.updateHouseFruit = function() {
+    if (!this.houseFruitFrames) return;
+    if (this.houseFruitFrames++ >= HOUSE_FRUIT_EAT_FRAMES) {
+        map.collectTile(this.tile.x, this.tile.y);
+        addScore(500);
+        this.houseFruitFrames = 0;
+    }
+};
+
 // update this frame
 Player.prototype.update = function(j) {
+    if (this.houseFruitFrames) return;
 
     var numSteps = this.getNumSteps();
     if (j >= numSteps)
@@ -222,9 +245,11 @@ Player.prototype.update = function(j) {
             if (t=='o')
                 energizer.activate();
         }
-        if (t == '$') {
-            map.collectTile(this.tile.x, this.tile.y);
-            addScore(500);
+        if (t == '$' && this.distToMid.x == 0 && this.distToMid.y == 0) {
+            this.houseFruitFrames = 1;
+            this.stopped = true;
+            this.inputDirEnum = undefined;
+            audio.eating.stopLoop(true);
         }
         if (t == ' ' && ! (this.lastMeal.x == this.tile.x && this.lastMeal.y == this.tile.y)) {
             audio.eating.stopLoop(true);

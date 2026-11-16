@@ -150,8 +150,8 @@ var mapPacman = new Map(28, 36, (
 var houseFloor = [
     "_____|.|| |||  ||| ||.|_____",
     "||||||.|| |      | ||.||||||",
-    "      .   |      |   .      ",
-    "||||||.|| |$    $| ||.||||||"
+    "      .   |$    $|   .      ",
+    "||||||.|| |      | ||.||||||"
 ].join("");
 mapPacman.tiles = mapPacman.tiles.slice(0,15*28) + houseFloor + mapPacman.tiles.slice(19*28);
 mapPacman.resetCurrent();

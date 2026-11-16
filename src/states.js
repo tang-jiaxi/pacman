@@ -1298,6 +1298,7 @@ var playState = {
         renderer.drawFruit();
         renderer.drawPaths();
         renderer.drawActors();
+        renderer.drawHouseFruitProgress();
         renderer.drawTargets();
         renderer.endMapClip();
     },
@@ -1396,6 +1397,8 @@ var playState = {
                     for (i=0;i<4;i++) actors[i].update(j);
                     if (this.isPacmanCollide()) break;
                 }
+
+                if (j == maxSteps) pacman.updateHouseFruit();
 
                 // update frame counts
                 for (i=0; i<5; i++)

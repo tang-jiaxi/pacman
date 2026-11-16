@@ -3462,10 +3462,31 @@ var initRenderer = function(){
 
         drawHouseFruit: function(x,y) {
             bgCtx.save();
-            bgCtx.translate(x*tileSize+midTile.x,y*tileSize+midTile.y);
+            bgCtx.translate(x*tileSize+midTile.x+0.5,y*tileSize+midTile.y+0.5);
             bgCtx.scale(0.5,0.5);
             atlas.drawFruitSprite(bgCtx,0,0,"key");
             bgCtx.restore();
+        },
+
+        drawHouseFruitProgress: function() {
+            if (!pacman.houseFruitFrames) return;
+
+            var x = pacman.tile.x*tileSize+midTile.x+0.5;
+            var y = pacman.tile.y*tileSize+midTile.y+0.5;
+            var start = -Math.PI/2;
+            var progress = (pacman.houseFruitFrames-1)/HOUSE_FRUIT_EAT_FRAMES;
+
+            ctx.save();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#555';
+            ctx.beginPath();
+            ctx.arc(x,y,8,0,Math.PI*2);
+            ctx.stroke();
+            ctx.strokeStyle = '#ffd54a';
+            ctx.beginPath();
+            ctx.arc(x,y,8,start,start+Math.PI*2*progress);
+            ctx.stroke();
+            ctx.restore();
         },
 
         // erase pellet from background
@@ -8094,6 +8115,8 @@ Ghost.prototype.setTarget = function() {
 // Player is the controllable character (Pac-Man)
 
 // Player constructor
+var HOUSE_FRUIT_EAT_FRAMES = 150;
+
 var Player = function() {
 
     // inherit data from Actor
@@ -8111,6 +8134,7 @@ var Player = function() {
 
     this.savedNextDirEnum = {};
     this.savedStopped = {};
+    this.savedHouseFruitFrames = {};
     this.savedEatPauseFramesLeft = {};
 };
 
@@ -8121,6 +8145,7 @@ Player.prototype.save = function(t) {
     this.savedEatPauseFramesLeft[t] = this.eatPauseFramesLeft;
     this.savedNextDirEnum[t] = this.nextDirEnum;
     this.savedStopped[t] = this.stopped;
+    this.savedHouseFruitFrames[t] = this.houseFruitFrames;
 
     Actor.prototype.save.call(this,t);
 };
@@ -8129,6 +8154,7 @@ Player.prototype.load = function(t) {
     this.eatPauseFramesLeft = this.savedEatPauseFramesLeft[t];
     this.setNextDir(this.savedNextDirEnum[t]);
     this.stopped = this.savedStopped[t];
+    this.houseFruitFrames = this.savedHouseFruitFrames[t];
 
     Actor.prototype.load.call(this,t);
 };
@@ -8139,6 +8165,7 @@ Player.prototype.reset = function() {
     this.setNextDir(this.startDirEnum);
     this.stopped = false;
     this.inputDirEnum = undefined;
+    this.houseFruitFrames = 0;
 
     this.eatPauseFramesLeft = 0;   // current # of frames left to pause after eating
 
@@ -8186,6 +8213,12 @@ Player.prototype.getAnimFrame = function(frame) {
 };
 
 Player.prototype.setInputDir = function(dirEnum) {
+    if (this.houseFruitFrames) {
+        if (!getOpenTiles(this.tile)[dirEnum]) return;
+        this.houseFruitFrames = 0;
+        this.stopped = false;
+        this.setDir(dirEnum);
+    }
     this.inputDirEnum = dirEnum;
 };
 
@@ -8278,8 +8311,19 @@ Player.prototype.steer = function() {
 };
 
 
+// Advance once per gameplay frame, after checking for ghost collisions.
+Player.prototype.updateHouseFruit = function() {
+    if (!this.houseFruitFrames) return;
+    if (this.houseFruitFrames++ >= HOUSE_FRUIT_EAT_FRAMES) {
+        map.collectTile(this.tile.x, this.tile.y);
+        addScore(500);
+        this.houseFruitFrames = 0;
+    }
+};
+
 // update this frame
 Player.prototype.update = function(j) {
+    if (this.houseFruitFrames) return;
 
     var numSteps = this.getNumSteps();
     if (j >= numSteps)
@@ -8314,9 +8358,11 @@ Player.prototype.update = function(j) {
             if (t=='o')
                 energizer.activate();
         }
-        if (t == '$') {
-            map.collectTile(this.tile.x, this.tile.y);
-            addScore(500);
+        if (t == '$' && this.distToMid.x == 0 && this.distToMid.y == 0) {
+            this.houseFruitFrames = 1;
+            this.stopped = true;
+            this.inputDirEnum = undefined;
+            audio.eating.stopLoop(true);
         }
         if (t == ' ' && ! (this.lastMeal.x == this.tile.x && this.lastMeal.y == this.tile.y)) {
             audio.eating.stopLoop(true);
@@ -10853,6 +10899,7 @@ var playState = {
         renderer.drawFruit();
         renderer.drawPaths();
         renderer.drawActors();
+        renderer.drawHouseFruitProgress();
         renderer.drawTargets();
         renderer.endMapClip();
     },
@@ -10951,6 +10998,8 @@ var playState = {
                     for (i=0;i<4;i++) actors[i].update(j);
                     if (this.isPacmanCollide()) break;
                 }
+
+                if (j == maxSteps) pacman.updateHouseFruit();
 
                 // update frame counts
                 for (i=0; i<5; i++)
@@ -12766,8 +12815,8 @@ var mapPacman = new Map(28, 36, (
 var houseFloor = [
     "_____|.|| |||  ||| ||.|_____",
     "||||||.|| |      | ||.||||||",
-    "      .   |      |   .      ",
-    "||||||.|| |$    $| ||.||||||"
+    "      .   |$    $|   .      ",
+    "||||||.|| |      | ||.||||||"
 ].join("");
 mapPacman.tiles = mapPacman.tiles.slice(0,15*28) + houseFloor + mapPacman.tiles.slice(19*28);
 mapPacman.resetCurrent();
